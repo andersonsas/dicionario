@@ -7,69 +7,65 @@
 #include <stdlib.h>
 #include <windows.h>
 #include <locale.h>
+#include <string.h>
 
-/****************** VARIAVEIS GLOBAIS ******************/
+void gotoXY(int, int);
 
-COORD CursorPosition;
-
-int opcao;
-char resp;
-int linha, col, matTemp;
+/****************** ESTRUTURAS ******************/
 
 typedef struct country {
     char *nome;
-    struct country *proximo; /* Ponteiro para o proximo aluno */
+    struct country *proximo;
 } Country;
 
 typedef struct letra {
     char l;
+    int total;
     Country *country;
-    struct letra *letraPosterior;
-    struct letra *letraAnterior;
+    struct letra *proximo;
+    struct letra *anterior;
 } Letra;
 
-Country listaCountry, *countryAux;
-Letra listaLetra, *letraAux;
+/****************** VARIAVEIS ******************/
+int opcao;
+char resp;
+int linha, col, matTemp;
 
-void gotoXY(int x, int y) {
-    HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
-    CursorPosition.X = x;
-    CursorPosition.Y = y;
-    SetConsoleCursorPosition(console, CursorPosition); // Sets position for next thing to be printed
-}
+//COORD CursorPosition;
+Country listaCountry, *countryAux;
+Letra listaLetra = {}, *letraAux;
 
 /****************** FUNCAO CABECALHO ******************/
 
 void cabecalho() {
     system("cls");
     gotoXY(3, 5);
-    //cout << "PROGRAMA PARA GERENCIAR A MATRICULA, O NOME E AS NOTAS";
+    printf("DICIONARIO DE PAISES");
     gotoXY(3, 7);
-    //cout << "DE UM ALUNO USANDO UMA LISTA DUPLAMENTE ENCADEADA\n";
+    printf("USANDO UMA LISTA SIMPLES E DUPLAMENTE ENCADEADA\n");
 }
 
 /****************** FUNCAO MENU ******************/
 
 void interfaceMenu() {
     col = 10;
-    gotoXY(col, 2);
+    gotoXY(col, 10);
     puts("──────────────── MENU ────────────────");
-    gotoXY(col, 3);
-    //puts("*      Exibir.............[1]       *");
-    gotoXY(col, 4);
+    gotoXY(col, 11);
+    puts("*      Exibir.............[1]       *");
+    gotoXY(col, 12);
     puts("*      Inserir............[2]       *");
-    gotoXY(col, 5);
+    gotoXY(col, 13);
     //cout << "*      Remover............[3]       *";
-    gotoXY(col, 6);
+    gotoXY(col, 14);
     //cout << "*      Inserir em Ordem...[4]       *";
-    gotoXY(col, 7);
+    gotoXY(col, 15);
     //cout << "*      Sair...............[0]       *";
-    gotoXY(col, 8);
+    gotoXY(col, 16);
     //cout << "*      Digite a opcao:              *";
-    gotoXY(col, 9);
+    gotoXY(col, 17);
     //cout << "*************************************";
-    gotoXY(42, 16);
-    scanf("%d", &opcao);
+    gotoXY(42, 22);
 }
 
 /******************** FUNCAO DIARIO *******************/
@@ -90,66 +86,49 @@ void interfaceMenu() {
 
 /********************* FUNCAO EXIBIR *******************/
 
-/* void exibir() {
-    if (inicio.pProximo != NULL) {
-        pAux = inicio.pProximo; // aponta para o inicio da lista
+void exibir() {
+
+    if (listaLetra.proximo != NULL) {
+        letraAux = listaLetra.proximo; // aponta para o inicio da lista
         system("cls");
-        gotoXY(1, 5);
-        //cout << "********************************  DIARIO *********************************";
-        gotoXY(1, 7);
-        //cout << "Professor: " << professor;
-        gotoXY(1, 8);
-        //cout << "Disciplina: " << disciplina;
-        gotoXY(1, 9);
-        //cout << "Turma: " << turma;
-        linha = 12;
-        //cout << "\n---------------------------------------------------------------------------";
-        gotoXY(1, linha);
-        //cout << "Matricula";
-        gotoXY(15, linha);
-        //cout << "Nome";
-        gotoXY(50, linha);
-        //cout << "Nota1";
-        gotoXY(60, linha);
-        //cout << "Nota2";
-        gotoXY(70, linha);
-        //cout << "Media";
-        linha = 14;
-        //cout << "\n---------------------------------------------------------------------------";
-        while (pAux) {
-            gotoXY(1, linha);
-            //cout << pAux->matricula;
-            gotoXY(15, linha);
-            //cout << pAux->nome;
-            gotoXY(50, linha);
-            //cout << pAux->notas[0];
-            gotoXY(60, linha);
-            //cout << pAux->notas[1];
-            gotoXY(70, linha);
-            //cout << pAux->notas[2];
-            pAux = pAux->pProximo;
+        gotoXY(1, 1);
+        printf("────────────────────  EXIBIR ────────────────────");
+        gotoXY(1, 2); printf("PAÍS");
+        printf("\n────────────────────────────────────────────────────────────\n");
+
+        linha = 5;
+        while (letraAux) {
+            countryAux = letraAux->country; // countryAux aponta para o inicio da lista
+            while (countryAux) {
+                gotoXY(1, linha);
+                printf("%s", countryAux->nome);
+                countryAux = countryAux->proximo;
+                linha++;
+            }
+
+            letraAux = letraAux->proximo;
             linha++;
         }
-        //cout << "\n---------------------------------------------------------------------------\n";
-        system("pause");
+        printf("\n────────────────────────────────────────────────────────────\n");
+        puts(""); system("pause");
     } else {
         gotoXY(15, 18);
-        //cout << "ATENCAO: Alunos inexistentes! ";
+        printf("NÃO HÁ PAISES REGISTRADO");
         system("pause");
     }
-} */
+}
 
 void desenhar_inserir_pais() {
     system("cls");
-    printf("************************* ADICIONAR PAÍS *************************");
+    printf("──────────────────── ADICIONAR PAÍS ────────────────────");
     gotoXY(1, 2);
-    printf("*  Nome do País:                                                       *");
+    printf("*  Nome do País:                                                 *");
     gotoXY(1, 3);
-    printf("*  Campo 1:                                                   *");
+    printf("*  Campo 1:                                                      *");
     gotoXY(1, 4);
-    printf("*  Campo 3:                                                           *");
+    printf("*  Campo 3:                                                      *");
 
-    printf("\n*********************************************************************");
+    printf("\n────────────────────────────────────────────────────────");
 }
 
 /* void desenhar_remover_aluno() {
@@ -219,7 +198,7 @@ void desenhar_inserir_pais() {
 
 void inserir() {
     char buffer[32] = {}, *name;
-    int existe = 1;
+    int podeAlocar = 1;
     Country *antes = NULL;
 
     do {
@@ -227,24 +206,24 @@ void inserir() {
         letraAux = &listaLetra;
         gotoXY(20, 2);
         scanf(" %s", buffer); name = strdup(buffer);
-        while (letraAux->letraPosterior && (existe = letraAux->letraPosterior->l != name[0])) {
-            letraAux = letraAux->letraPosterior;
+        while (letraAux->proximo && (podeAlocar = letraAux->proximo->l != name[0])) {
+            letraAux = letraAux->proximo;
         }
 
-        if (existe) {
-            letraAux->letraPosterior = malloc(sizeof(Letra));
-            if (!letraAux->letraPosterior) return;
-            letraAux->letraPosterior->country = NULL;
-            letraAux->letraPosterior->letraPosterior = NULL;
+        if (podeAlocar) {
+            letraAux->proximo = malloc(sizeof(Letra));
+            if (!letraAux->proximo) return;
+            letraAux->proximo->country = NULL;
+            letraAux->proximo->proximo = NULL;
 
-            letraAux->letraPosterior->letraAnterior = letraAux;
-            letraAux->letraPosterior->l = name[0];
+            letraAux->proximo->anterior = letraAux;
+            letraAux->proximo->l = name[0];
+            letraAux->proximo->total = 0;
         }
 
-        letraAux = letraAux->letraPosterior;
+        letraAux = letraAux->proximo;
 
         // letraAux->country : Inicio da lista simples
-        // countryAux: Iterador
 
         countryAux = letraAux->country;
 
@@ -253,13 +232,12 @@ void inserir() {
             countryAux = countryAux->proximo;
         }
 
-        // Alocacao e insercao de dados
+        // Alocação e inserção de dados
         Country *novo = malloc(sizeof(Country));
         if (!novo) { printf("Falha: alloc country"); return; }
         //strcpy(novo->nome, nationName);
         novo->nome = name;
         novo->proximo = NULL;
-
 
         if (letraAux->country) {
             antes->proximo = novo;
@@ -267,9 +245,9 @@ void inserir() {
             // Se não há país na lista, o início da lista de países aponta para novo
             letraAux->country = novo;
         }
+        letraAux->total++;
 
         //gotoXY(20, 3); cin.getline(pAux->nome, 50); //fgets(pAux->nome, 99, stdin);
-
 
         gotoXY(1, 7); puts("\nContinuar inserindo dados? Sim[S] Nao[outra tecla]---->");
         scanf(" %c", &resp);
@@ -322,6 +300,7 @@ void inserir() {
 } */
 
 /********************* FUNCAO INSERIR EM ORDEM *******************/
+
 /*
 void inserirOrdem() {
     Aluno *pMenor, *pMaior;
@@ -367,7 +346,13 @@ void inserirOrdem() {
     salvar();
 } */
 
-
+void gotoXY(int x, int y) {
+    printf("\033[%d;%dH", y, x);
+    /* HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
+    CursorPosition.X = x;
+    CursorPosition.Y = y;
+    SetConsoleCursorPosition(console, CursorPosition); */
+}
 
 /****************** FUNCAO PRINCIPAL ******************/
 
@@ -375,23 +360,23 @@ int main() {
     setlocale(LC_ALL, ".65001");
     int cont_tela = 1;
 
-    listaLetra.letraPosterior = NULL; /* lista vazia */
+    listaLetra.proximo = NULL; /* lista vazia */
     //carregar();
-
     //cabecalho();
     //diario();
     cont_tela++;
 
     do {
         if (cont_tela > 1) {
-            //cabecalho();
+            cabecalho();
             interfaceMenu();
         }
+        scanf("%d", &opcao);
         switch (opcao) {
             case 0:
                 break;
             case 1:
-                //exibir();
+                exibir();
                 break;
             case 2:
                 inserir();
