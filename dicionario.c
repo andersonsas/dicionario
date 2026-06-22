@@ -13,26 +13,25 @@ void gotoXY(int, int);
 
 /****************** ESTRUTURAS ******************/
 
-typedef struct country {
+typedef struct pais {
     char *nome;
-    struct country *proximo;
-} Country;
+    struct pais *proximo;
+} Pais;
 
 typedef struct letra {
     char l;
     int total;
-    Country *country;
-    struct letra *proximo;
-    struct letra *anterior;
+    Pais *primeiroPais, *ultimoPais;
+    struct letra *anterior, *proximo;
 } Letra;
 
 /****************** VARIAVEIS ******************/
 int opcao;
 char resp;
-int linha, col, matTemp;
+int linha, col;
 
 //COORD CursorPosition;
-Country listaCountry, *countryAux;
+Pais *paisAux;
 Letra listaLetra = {}, *letraAux;
 
 /****************** FUNCAO CABECALHO ******************/
@@ -98,11 +97,11 @@ void exibir() {
 
         linha = 5;
         while (letraAux) {
-            countryAux = letraAux->country; // countryAux aponta para o inicio da lista
-            while (countryAux) {
+            paisAux = letraAux->primeiroPais; // countryAux aponta para o inicio da lista
+            while (paisAux) {
                 gotoXY(1, linha);
-                printf("%s", countryAux->nome);
-                countryAux = countryAux->proximo;
+                printf("%s", paisAux->nome);
+                paisAux = paisAux->proximo;
                 linha++;
             }
 
@@ -199,22 +198,19 @@ void desenhar_inserir_pais() {
 void inserir() {
     char buffer[32] = {}, *name;
     int podeAlocar = 1;
-    Country *antes = NULL;
 
     do {
-        desenhar_inserir_pais();
-        letraAux = &listaLetra;
-        gotoXY(20, 2);
-        scanf(" %s", buffer); name = strdup(buffer);
+        desenhar_inserir_pais(); letraAux = &listaLetra;
+
+        gotoXY(20, 2); scanf(" %s", buffer); name = strdup(buffer);
+
         while (letraAux->proximo && (podeAlocar = letraAux->proximo->l != name[0])) {
             letraAux = letraAux->proximo;
         }
 
-        if (podeAlocar) {
-            letraAux->proximo = malloc(sizeof(Letra));
+        if (podeAlocar) { // Alocação de Nó-Letra
+            letraAux->proximo = calloc(1, sizeof(Letra));
             if (!letraAux->proximo) return;
-            letraAux->proximo->country = NULL;
-            letraAux->proximo->proximo = NULL;
 
             letraAux->proximo->anterior = letraAux;
             letraAux->proximo->l = name[0];
@@ -222,33 +218,34 @@ void inserir() {
         }
 
         letraAux = letraAux->proximo;
+        paisAux = letraAux->primeiroPais;
 
-        // letraAux->country : Inicio da lista simples
+        //------ Alocação e inserção de dados
+        Pais *novo = calloc(1, sizeof(Pais));
+        if (!novo) { printf("Falha: alloc country"); return; }
+        novo->nome = name;
 
-        countryAux = letraAux->country;
-
-        while (countryAux && strcmp(countryAux->nome, name) != 0) {
-            antes = countryAux;
-            countryAux = countryAux->proximo;
+        //---- Verifica se já existe o país
+        while (paisAux) {
+            if (strcmp(paisAux->nome, name) != 0) { // entrada do usuário VS lista
+                paisAux = paisAux->proximo; // atualiza o auxiliar
+            } else {
+                free(novo);
+                gotoXY(1, 6); printf("País já registrado");
+                goto end_inserir; // vai para o fim da função
+            }
         }
 
-        // Alocação e inserção de dados
-        Country *novo = malloc(sizeof(Country));
-        if (!novo) { printf("Falha: alloc country"); return; }
-        //strcpy(novo->nome, nationName);
-        novo->nome = name;
-        novo->proximo = NULL;
-
-        if (letraAux->country) {
-            antes->proximo = novo;
+        if (letraAux->primeiroPais) { // Se há países na lista
+            letraAux->ultimoPais->proximo = novo; // vincula o "novo" ao "próximo do último"
+            letraAux->ultimoPais = novo; // atualiza o "último da lista"
         } else {
-            // Se não há país na lista, o início da lista de países aponta para novo
-            letraAux->country = novo;
+            letraAux->ultimoPais = letraAux->primeiroPais = novo;
         }
         letraAux->total++;
 
-        //gotoXY(20, 3); cin.getline(pAux->nome, 50); //fgets(pAux->nome, 99, stdin);
-
+        // --------------------------------------------
+    end_inserir:
         gotoXY(1, 7); puts("\nContinuar inserindo dados? Sim[S] Nao[outra tecla]---->");
         scanf(" %c", &resp);
         resp = toupper(resp);
