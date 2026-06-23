@@ -196,56 +196,79 @@ void desenhar_inserir_pais() {
 /********************* FUNCAO INSERIR *******************/
 
 void inserir() {
-    char buffer[32] = {}, *name;
-    int podeAlocar = 1;
+    char buffer[63] = {};
 
     do {
-        desenhar_inserir_pais(); letraAux = &listaLetra;
+        desenhar_inserir_pais();
 
-        gotoXY(20, 2); scanf(" %s", buffer); name = strdup(buffer);
+        gotoXY(20, 2);
+        scanf(" %63[^\n]", buffer);
 
-        while (letraAux->proximo && (podeAlocar = letraAux->proximo->l != name[0])) {
+        /* int c;
+        while ((c = getchar()) != '\n' && c != EOF); */
+        getchar();
+
+        char *name = strdup(buffer);
+        if (!name) return;
+
+        // Padroniza a letra da lista para maiúscula
+        char letraGrupo = toupper(name[0]);
+
+        letraAux = &listaLetra;
+        int podeAlocar = 1;
+
+        // Busca a letra na lista
+        while (letraAux->proximo && (podeAlocar = letraAux->proximo->l != letraGrupo)) {
             letraAux = letraAux->proximo;
         }
 
-        if (podeAlocar) { // Alocação de Nó-Letra
+        // Se a letra existe, aloca o novo Nó-letra
+        if (podeAlocar) {
             letraAux->proximo = calloc(1, sizeof(Letra));
-            if (!letraAux->proximo) return;
+            if (!letraAux->proximo) { free(name); return; }
 
             letraAux->proximo->anterior = letraAux;
-            letraAux->proximo->l = name[0];
+            letraAux->proximo->l = letraGrupo;
             letraAux->proximo->total = 0;
         }
 
-        letraAux = letraAux->proximo;
+        letraAux = letraAux->proximo; // Entra no nó da letra
         paisAux = letraAux->primeiroPais;
 
-        //------ Alocação e inserção de dados
+        // Aloca novo país
         Pais *novo = calloc(1, sizeof(Pais));
-        if (!novo) { printf("Falha: alloc country"); return; }
+        if (!novo) {
+            printf("Falha: país não alocado");
+            free(name);
+            return;
+        }
         novo->nome = name;
 
-        //---- Verifica se já existe o país
+        // Verifica se já existe o país
+        int duplicato = 0;
         while (paisAux) {
-            if (strcmp(paisAux->nome, name) != 0) { // entrada do usuário VS lista
-                paisAux = paisAux->proximo; // atualiza o auxiliar
-            } else {
-                free(novo);
-                gotoXY(1, 6); printf("País já registrado");
-                goto end_inserir; // vai para o fim da função
+            if (strcmp(paisAux->nome, name) == 0) { // entrada do usuário VS lista
+                duplicato = 1;
+                break; // Encontrou, então interrompe
             }
+            paisAux = paisAux->proximo; // atualiza o auxiliar
         }
 
-        if (letraAux->primeiroPais) { // Se há países na lista
-            letraAux->ultimoPais->proximo = novo; // vincula o "novo" ao "próximo do último"
-            letraAux->ultimoPais = novo; // atualiza o "último da lista"
+        if (duplicato) {
+            free(novo);
+            free(name);
+            gotoXY(1, 6); printf("País já registrado");
         } else {
-            letraAux->ultimoPais = letraAux->primeiroPais = novo;
+            // Insere no final da lista de países
+            if (letraAux->primeiroPais) { // Se há países na lista
+                letraAux->ultimoPais->proximo = novo; // vincula o "novo" ao "próximo do último"
+                letraAux->ultimoPais = novo; // atualiza o "último da lista"
+            } else {
+                letraAux->ultimoPais = letraAux->primeiroPais = novo;
+            }
+            letraAux->total++;
         }
-        letraAux->total++;
 
-        // --------------------------------------------
-    end_inserir:
         gotoXY(1, 7); puts("\nContinuar inserindo dados? Sim[S] Nao[outra tecla]---->");
         scanf(" %c", &resp);
         resp = toupper(resp);
