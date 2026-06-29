@@ -46,7 +46,7 @@ void limparBuffer() {
     while ((c = getchar()) != '\n' && c != EOF);
 }
 
-void removerNodo(Pais **noPais) {
+void freePais(Pais **noPais) {
     free((*noPais)->nome);
     free((*noPais)->descricao);
     free(*noPais);
@@ -150,13 +150,17 @@ int telaInserir() {
     return !buscarNoDicionario(nome);
 }
 
-void telaRemover() {
+int telaRemover() {
     system("cls");
     puts("************************** REMOVER PAÍS ****************************");
     gotoXY(1, 2);
     puts("*  PAÍS:                                                           *");
     gotoXY(1, 3);
     puts("********************************************************************");
+
+    gotoXY(20, 2); scanf(" %63[^\n]", nome); limparBuffer();
+
+    return buscarNoDicionario(nome);
 }
 
 void telaEditar() {
@@ -283,74 +287,25 @@ void inserir() {
 /********************* FUNCAO REMOVER *******************/
 
 void remover() {
-    char minhaBusca[64], letraGrupo;
+    char letraGrupo = toupper(nome[0]);
 
-    do {
-        telaRemover();
+    // Tratar os ponteiros
+    if (paisAnterior == NULL) letraAux->paises = paisAux->proximo;
+    else paisAnterior->proximo = paisAux->proximo;
 
-        gotoXY(15, 2);
-        lerTexto(minhaBusca);
-        letraGrupo = toupper(minhaBusca[0]);
+    // Libera memória
+    freePais(&paisAux);
+    letraAux->total--;
 
-        // 1. Verifica se a letra existe
-        if (existeLetra(letraGrupo)) {
-
-            // 2. Verifica se o país existe dentro da letra (isso já configura paisAux e paisAnterior)
-            if (existePais(minhaBusca)) {
-
-                gotoXY(1, 6);
-                printf("ATENCAO: Remover %s? Sim[S] Nao[outra tecla]----> ", paisAux->nome);
-                scanf(" %c", &resp); limparBuffer();
-                resp = toupper(resp);
-
-                if (resp == 'S') {
-                    // Desvincula o país da lista simplesmente encadeada
-                    if (paisAnterior == NULL) {
-                        letraAux->paises = paisAux->proximo; // Era o primeiro da lista
-                    } else {
-                        paisAnterior->proximo = paisAux->proximo; // Estava no meio ou fim
-                    }
-
-                    // Libera a memória alocada dinamicamente pelo strdup e calloc
-                    free(paisAux->nome);
-                    free(paisAux->descricao);
-                    free(paisAux);
-                    paisAux = NULL;
-
-                    letraAux->total--; // Diminui a contagem de países na letra
-
-                    // Se a letra não tem mais países, removemos o nó da letra (Lista Duplamente Encadeada)
-                    if (letraAux->total == 0) {
-                        letraAux->anterior->proximo = letraAux->proximo;
-                        if (letraAux->proximo) {
-                            letraAux->proximo->anterior = letraAux->anterior;
-                        }
-                        free(letraAux);
-                        letraAux = NULL;
-                    }
-
-                    gotoXY(1, 7);
-                    printf("País removido com sucesso!\n");
-                } else {
-                    gotoXY(1, 7);
-                    printf("Remoção cancelada.\n");
-                }
-            } else {
-                gotoXY(1, 7);
-                printf("País não encontrado sob a letra [%c].\n", letraGrupo);
-            }
-        } else {
-            gotoXY(1, 7);
-            printf("Letra [%c] não possui registros.\n", letraGrupo);
+    // Verifica se letra é vazia
+    if (letraAux->total == 0) {
+        letraAux->anterior->proximo = letraAux->proximo;
+        if (letraAux->proximo) {
+            letraAux->proximo->anterior = letraAux->anterior;
         }
-
-        gotoXY(1, 10);
-        printf("Continuar removendo dados? Sim[S] Nao[outra tecla]----> ");
-        scanf(" %c", &resp); limparBuffer();
-        resp = toupper(resp);
-
-    } while (resp == 'S');
-    //salvar();
+        free(letraAux);
+        letraAux = NULL;
+    }
 }
 
 void editar() {
@@ -377,7 +332,7 @@ void editar() {
             else letraAux->paises = paisAux->proximo;
 
             letraAux->total--;
-            removerNodo(&paisAux);
+            freePais(&paisAux);
 
             if (letraAux->total == 0) {
                 letraAux->anterior->proximo = letraAux->proximo;
@@ -518,7 +473,9 @@ int main() {
                 }
                 break;
             case 3:
-                remover();
+                if (telaRemover() == 1) {
+                    remover();
+                }
                 break;
             case 4:
                 editar();
