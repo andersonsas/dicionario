@@ -6,7 +6,6 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <windows.h>
-#include <locale.h>
 #include <string.h>
 
 void gotoXY(int, int);
@@ -15,13 +14,14 @@ void gotoXY(int, int);
 
 typedef struct pais {
     char *nome;
+    char *descricao;
     struct pais *proximo;
 } Pais;
 
 typedef struct letra {
     char l;
     int total;
-    Pais *primeiroPais, *ultimoPais;
+    Pais *paises;
     struct letra *anterior, *proximo;
 } Letra;
 
@@ -31,12 +31,77 @@ char resp;
 int linha, col;
 
 //COORD CursorPosition;
-Pais *paisAux;
+Pais *paisAux, *paisAnterior, *ultimoPaisLocal;
 Letra listaLetra = {}, *letraAux;
+
+/************ FUNÇÕES AUXILIARES ****************/
+
+void lerTexto(char *txt) {
+    fgets(txt, 64, stdin);
+    txt[strcspn(txt, "\n")] = '\0';
+}
+
+void limparBuffer() {
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF);
+}
+
+void removerNodo(Pais **noPais) {
+    free((*noPais)->nome);
+    free((*noPais)->descricao);
+    free(*noPais);
+    *noPais = NULL;
+}
+
+void escrever(char **destino, char *fonte) {
+    free(*destino);
+    *destino = strdup(fonte);
+    if (!(*destino)) return;
+}
+
+int existePais(const char *nome) {
+    if (!letraAux) return 0; // Se não há letra selecionada, não existe país
+
+    paisAux = letraAux->paises;
+    paisAnterior = NULL;
+
+    while (paisAux) {
+        if (stricmp(paisAux->nome, nome) == 0) {
+            return 1; // País encontrado
+        }
+        paisAnterior = paisAux; // Guarda o país anterior
+        paisAux = paisAux->proximo; // Entrada no país
+    }
+    paisAux = paisAnterior; // Entra no último país
+    return 0; // País não encontrado
+}
+
+int existeLetra(const char busca) {
+    letraAux = &listaLetra;
+    while (letraAux->proximo && letraAux->proximo->l != busca) {
+        letraAux = letraAux->proximo;
+    }
+
+    if (letraAux->proximo) {
+        letraAux = letraAux->proximo; // Entra no nó da letra
+        return 1;
+    } else {
+        return 0; // Entra na última letra
+    }
+}
+
+int buscarNoDicionario(const char *busca) {
+    if (existeLetra(toupper(busca[0]))) {
+        return existePais(busca);
+    } else {
+        existePais(busca);
+        return 0;
+    }
+}
 
 /****************** FUNCAO CABECALHO ******************/
 
-void cabecalho() {
+void telaCabecalho() {
     system("cls");
     gotoXY(3, 5);
     printf("DICIONARIO DE PAISES");
@@ -46,7 +111,7 @@ void cabecalho() {
 
 /****************** FUNCAO MENU ******************/
 
-void interfaceMenu() {
+void telaMenu() {
     col = 10;
     gotoXY(col, 10);
     puts("──────────────── MENU ────────────────");
@@ -55,9 +120,9 @@ void interfaceMenu() {
     gotoXY(col, 12);
     puts("*      Inserir............[2]       *");
     gotoXY(col, 13);
-    //cout << "*      Remover............[3]       *";
+    puts("*      Remover............[3]       *");
     gotoXY(col, 14);
-    //cout << "*      Inserir em Ordem...[4]       *";
+    puts("*      Editar.............[4]       *");
     gotoXY(col, 15);
     //cout << "*      Sair...............[0]       *";
     gotoXY(col, 16);
@@ -67,57 +132,7 @@ void interfaceMenu() {
     gotoXY(42, 22);
 }
 
-/******************** FUNCAO DIARIO *******************/
-
-/* void diario() {
-    gotoXY(3, 9);
-    cout << "PREENCHER OS DADOS DO CABECALHO DO DIARIO";
-    gotoXY(3, 11);
-    cout << "Professor: ";
-    fgets(professor, 99, stdin);
-    gotoXY(3, 13);
-    cout << "Disciplina: ";
-    fgets(disciplina, 99, stdin);
-    gotoXY(3, 15);
-    cout << "Turma: ";
-    fgets(turma, 99, stdin);
-} */
-
-/********************* FUNCAO EXIBIR *******************/
-
-void exibir() {
-
-    if (listaLetra.proximo != NULL) {
-        letraAux = listaLetra.proximo; // aponta para o inicio da lista
-        system("cls");
-        gotoXY(1, 1);
-        printf("────────────────────  EXIBIR ────────────────────");
-        gotoXY(1, 2); printf("PAÍS");
-        printf("\n────────────────────────────────────────────────────────────\n");
-
-        linha = 5;
-        while (letraAux) {
-            paisAux = letraAux->primeiroPais; // countryAux aponta para o inicio da lista
-            while (paisAux) {
-                gotoXY(1, linha);
-                printf("%s", paisAux->nome);
-                paisAux = paisAux->proximo;
-                linha++;
-            }
-
-            letraAux = letraAux->proximo;
-            linha++;
-        }
-        printf("\n────────────────────────────────────────────────────────────\n");
-        puts(""); system("pause");
-    } else {
-        gotoXY(15, 18);
-        printf("NÃO HÁ PAISES REGISTRADO");
-        system("pause");
-    }
-}
-
-void desenhar_inserir_pais() {
+void telaInserir() {
     system("cls");
     printf("──────────────────── ADICIONAR PAÍS ────────────────────");
     gotoXY(1, 2);
@@ -130,14 +145,23 @@ void desenhar_inserir_pais() {
     printf("\n────────────────────────────────────────────────────────");
 }
 
-/* void desenhar_remover_aluno() {
+void telaRemover() {
     system("cls");
-    cout << "************************** REMOVER ALUNO ****************************";
+    puts("************************** REMOVER PAÍS ****************************");
     gotoXY(1, 2);
-    cout << "*  Matricula:                                                       *";
+    puts("*  PAÍS:                                                           *");
     gotoXY(1, 3);
-    cout << "*********************************************************************";
-} */
+    puts("********************************************************************");
+}
+
+void telaEditar() {
+    system("cls");
+    puts("************************** EDITAR PAÍS ****************************");
+    gotoXY(1, 2);
+    puts("*  PAÍS:                                                           *");
+    gotoXY(1, 3);
+    puts("********************************************************************");
+}
 
 /* void carregar() {
     FILE *f = fopen("Alunos.txt", "r");
@@ -193,84 +217,103 @@ void desenhar_inserir_pais() {
     fclose(f);
 } */
 
+/********************* FUNCAO EXIBIR *******************/
+
+void exibir() {
+
+    if (listaLetra.proximo != NULL) {
+        letraAux = listaLetra.proximo; // aponta para o inicio da lista
+        system("cls");
+        gotoXY(1, 1);
+        printf("────────────────────  EXIBIR ────────────────────");
+        gotoXY(1, 2); printf("PAÍS");
+        printf("\n────────────────────────────────────────────────────────────\n");
+
+        linha = 5;
+        while (letraAux) {
+            printf("[%c] - (%d)\n", letraAux->l, letraAux->total);
+            paisAux = letraAux->paises;
+            while (paisAux) {
+                printf("    %s\n", paisAux->nome);
+                paisAux = paisAux->proximo;
+            }
+            letraAux = letraAux->proximo;
+            puts("");
+        }
+        printf("\n────────────────────────────────────────────────────────────\n");
+        puts(""); system("pause");
+    } else {
+        gotoXY(15, 18);
+        puts("NÃO HÁ PAISES REGISTRADO");
+        system("pause");
+    }
+}
+
 /********************* FUNCAO INSERIR *******************/
 
 void inserir() {
     char buffer[63] = {};
 
     do {
-        desenhar_inserir_pais();
+        telaInserir();
 
         gotoXY(20, 2);
-        scanf(" %63[^\n]", buffer);
+        scanf(" %63[^\n]", buffer); limparBuffer();
+        char *name = strdup(buffer); if (!name) return;
 
-        /* int c;
-        while ((c = getchar()) != '\n' && c != EOF); */
-        getchar();
-
-        char *name = strdup(buffer);
-        if (!name) return;
-
-        // Padroniza a letra da lista para maiúscula
         char letraGrupo = toupper(name[0]);
 
-        letraAux = &listaLetra;
-        int podeAlocar = 1;
-
-        // Busca a letra na lista
-        while (letraAux->proximo && (podeAlocar = letraAux->proximo->l != letraGrupo)) {
-            letraAux = letraAux->proximo;
-        }
-
-        // Se a letra existe, aloca o novo Nó-letra
-        if (podeAlocar) {
+        if (!existeLetra(letraGrupo)) {
             letraAux->proximo = calloc(1, sizeof(Letra));
             if (!letraAux->proximo) { free(name); return; }
 
             letraAux->proximo->anterior = letraAux;
             letraAux->proximo->l = letraGrupo;
-            letraAux->proximo->total = 0;
+
+            letraAux = letraAux->proximo;
         }
 
-        letraAux = letraAux->proximo; // Entra no nó da letra
-        paisAux = letraAux->primeiroPais;
-
-        // Aloca novo país
-        Pais *novo = calloc(1, sizeof(Pais));
-        if (!novo) {
-            printf("Falha: país não alocado");
-            free(name);
-            return;
-        }
-        novo->nome = name;
+        paisAux = letraAux->paises;
 
         // Verifica se já existe o país
         int duplicato = 0;
         while (paisAux) {
-            if (strcmp(paisAux->nome, name) == 0) { // entrada do usuário VS lista
+            if (stricmp(paisAux->nome, name) == 0) { // Compara com a entrada do usuário
                 duplicato = 1;
                 break; // Encontrou, então interrompe
             }
-            paisAux = paisAux->proximo; // atualiza o auxiliar
+            ultimoPaisLocal = paisAux;
+            paisAux = paisAux->proximo; // Atualiza o auxiliar
         }
 
         if (duplicato) {
-            free(novo);
             free(name);
-            gotoXY(1, 6); printf("País já registrado");
+            gotoXY(1, 6);
+            printf("País já registrado");
         } else {
-            // Insere no final da lista de países
-            if (letraAux->primeiroPais) { // Se há países na lista
-                letraAux->ultimoPais->proximo = novo; // vincula o "novo" ao "próximo do último"
-                letraAux->ultimoPais = novo; // atualiza o "último da lista"
+            Pais *novo = calloc(1, sizeof(Pais));
+            if (!novo) {
+                gotoXY(1, 6);
+                printf("Falha: país não alocado");
+                free(name);
+                return;
+            }
+            novo->nome = name;
+
+            gotoXY(20, 3);
+            scanf(" %63[^\n]", buffer); limparBuffer();
+            novo->descricao = strdup(buffer); if (!novo->descricao) return;
+
+            if (letraAux->paises) { // Se há países na lista
+                ultimoPaisLocal->proximo = novo; // vincula o "novo" ao "próximo do último"
             } else {
-                letraAux->ultimoPais = letraAux->primeiroPais = novo;
+                ultimoPaisLocal = letraAux->paises = novo;
             }
             letraAux->total++;
         }
 
         gotoXY(1, 7); puts("\nContinuar inserindo dados? Sim[S] Nao[outra tecla]---->");
-        scanf(" %c", &resp);
+        scanf(" %c", &resp); limparBuffer();
         resp = toupper(resp);
     } while (resp == 'S');
     //salvar();
@@ -278,46 +321,154 @@ void inserir() {
 
 /********************* FUNCAO REMOVER *******************/
 
-/* void remover() {
+void remover() {
+    char minhaBusca[64], letraGrupo;
+
     do {
-        desenhar_remover_aluno();
-        resp = '0';
+        telaRemover();
 
         gotoXY(15, 2);
-        //cin >> matTemp;
-        pAux = &inicio;
-        while (pAux->matricula != matTemp && pAux->pProximo != NULL) {
-            //pAux->pAnterior = pAux;
-            pAux = pAux->pProximo;
-        }
-        if (pAux->matricula == matTemp) {
-            gotoXY(3, 5);
-            //  cout << "ATENCAO: Remover " << pAux->nome << "? Sim[S] Nao[outra tecla]---->";
-              //cin >> resp;
-            resp = toupper(resp);
-            if (resp == 'S') {
-                pAux->pAnterior->pProximo = pAux->pProximo;
+        lerTexto(minhaBusca);
+        letraGrupo = toupper(minhaBusca[0]);
 
-                if (pAux->pProximo != NULL)
-                    pAux->pProximo->pAnterior = pAux->pAnterior;
+        // 1. Verifica se a letra existe
+        if (existeLetra(letraGrupo)) {
 
-                pAux->pProximo = NULL;
-                pAux->pAnterior = NULL;
-                //  delete pAux;
+            // 2. Verifica se o país existe dentro da letra (isso já configura paisAux e paisAnterior)
+            if (existePais(minhaBusca)) {
+
+                gotoXY(1, 6);
+                printf("ATENCAO: Remover %s? Sim[S] Nao[outra tecla]----> ", paisAux->nome);
+                scanf(" %c", &resp); limparBuffer();
+                resp = toupper(resp);
+
+                if (resp == 'S') {
+                    // Desvincula o país da lista simplesmente encadeada
+                    if (paisAnterior == NULL) {
+                        letraAux->paises = paisAux->proximo; // Era o primeiro da lista
+                    } else {
+                        paisAnterior->proximo = paisAux->proximo; // Estava no meio ou fim
+                    }
+
+                    // Libera a memória alocada dinamicamente pelo strdup e calloc
+                    free(paisAux->nome);
+                    free(paisAux->descricao);
+                    free(paisAux);
+                    paisAux = NULL;
+
+                    letraAux->total--; // Diminui a contagem de países na letra
+
+                    // Se a letra não tem mais países, removemos o nó da letra (Lista Duplamente Encadeada)
+                    if (letraAux->total == 0) {
+                        letraAux->anterior->proximo = letraAux->proximo;
+                        if (letraAux->proximo) {
+                            letraAux->proximo->anterior = letraAux->anterior;
+                        }
+                        free(letraAux);
+                        letraAux = NULL;
+                    }
+
+                    gotoXY(1, 7);
+                    printf("País removido com sucesso!\n");
+                } else {
+                    gotoXY(1, 7);
+                    printf("Remoção cancelada.\n");
+                }
+            } else {
+                gotoXY(1, 7);
+                printf("País não encontrado sob a letra [%c].\n", letraGrupo);
             }
         } else {
-            //gotoXY(20, 2); cout << "Matricula inexistente ";
-            system("pause");
-            //pAux->pAnterior = NULL;
-            //pAux = NULL;
+            gotoXY(1, 7);
+            printf("Letra [%c] não possui registros.\n", letraGrupo);
         }
-        gotoXY(3, 6);
-        //cout << "Continuar removendo dados? Sim[S] Nao[outra tecla]---->";
-        //cin >> resp;
+
+        gotoXY(1, 10);
+        printf("Continuar removendo dados? Sim[S] Nao[outra tecla]----> ");
+        scanf(" %c", &resp); limparBuffer();
         resp = toupper(resp);
+
     } while (resp == 'S');
-    salvar();
-} */
+    //salvar();
+}
+
+void editar() {
+    char textoNome[64], textoNovoNome[62], textoNovaDescricao[64];
+    telaEditar();
+
+    gotoXY(15, 2);
+    lerTexto(textoNome);
+
+    if (buscarNoDicionario(textoNome)) {
+        // O país existe para editar
+        lerTexto(textoNovoNome);
+
+        // Verifica a existência do nome
+        if (stricmp(textoNome, textoNovoNome) == 0) {
+            // O novo nome é o mesmo, só mude a descrição.
+            lerTexto(textoNovaDescricao);
+            escrever(&paisAux->descricao, textoNovaDescricao);
+
+        } else {
+            // O novo nome não é o mesmo
+            // Remove o nó antigo
+            if (paisAnterior) paisAnterior->proximo = paisAux->proximo;
+            else letraAux->paises = paisAux->proximo;
+
+            letraAux->total--;
+            removerNodo(&paisAux);
+
+            if (letraAux->total == 0) {
+                letraAux->anterior->proximo = letraAux->proximo;
+                if (letraAux->proximo) letraAux->proximo->anterior = letraAux->anterior;
+                free(letraAux);
+                letraAux = NULL;
+            }
+
+            // Atualiza os auxiliares
+            buscarNoDicionario(textoNovoNome);
+
+            // Verifica a existência da letra do novo nome
+            if (existeLetra(toupper(textoNovoNome[0]))) {
+                // A letra do novo nome existe
+                // Cria um nó de pais
+                paisAux->proximo = calloc(1, sizeof(Pais));
+                if (!paisAux->proximo) return;
+
+                escrever(&paisAux->proximo->nome, textoNovoNome);
+                lerTexto(textoNovaDescricao);
+                escrever(&paisAux->proximo->descricao, textoNovaDescricao);
+                letraAux->total++;
+
+            } else {
+                // A letra do novo nome não existe
+                // Cria-se um novo nó de letra
+
+                // Nova alocação, letraAux já é o último
+                letraAux->proximo = calloc(1, sizeof(Letra));
+                if (!letraAux->proximo) return;
+
+                // Rearranjando os ponteiros
+                letraAux->proximo->anterior = letraAux;
+
+                // Preenchendo a letra do nó
+                letraAux->proximo->l = toupper(textoNovoNome[0]);
+
+                // Cria-se um novo nó de país
+                letraAux->proximo->paises = calloc(1, sizeof(Pais));
+                paisAux = letraAux->proximo->paises;
+
+                // Inserindo os dados no nó
+                escrever(&paisAux->nome, textoNovoNome);
+                lerTexto(textoNovaDescricao);
+                escrever(&paisAux->descricao, textoNovaDescricao);
+                letraAux->proximo->total++;
+            }
+        }
+    } else {
+        gotoXY(15, 5); puts("NÃO HÁ PAISES REGISTRADO"); system("pause");
+    }
+}
 
 /********************* FUNCAO INSERIR EM ORDEM *******************/
 
@@ -377,21 +528,22 @@ void gotoXY(int x, int y) {
 /****************** FUNCAO PRINCIPAL ******************/
 
 int main() {
-    setlocale(LC_ALL, ".65001");
+    SetConsoleCP(CP_UTF8);
+    SetConsoleOutputCP(CP_UTF8);
+
     int cont_tela = 1;
 
     listaLetra.proximo = NULL; /* lista vazia */
     //carregar();
-    //cabecalho();
-    //diario();
     cont_tela++;
 
     do {
         if (cont_tela > 1) {
-            cabecalho();
-            interfaceMenu();
+            telaCabecalho();
+            telaMenu();
         }
         scanf("%d", &opcao);
+        getchar();
         switch (opcao) {
             case 0:
                 break;
@@ -402,9 +554,12 @@ int main() {
                 inserir();
                 break;
             case 3:
-                //remover();
+                remover();
                 break;
             case 4:
+                editar();
+                break;
+            case 9:
                 //inserirOrdem();
                 break;
             default:
