@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <windows.h>
 #include <string.h>
+#include <locale.h>
 
 void gotoXY(int, int);
 
@@ -26,9 +27,8 @@ typedef struct letra {
 } Letra;
 
 /****************** VARIAVEIS ******************/
-int opcao;
-char resp;
-int linha, col;
+int opcao, linha, col;
+char resp, nome[64] = {}, descricao[64] = {};
 
 //COORD CursorPosition;
 Pais *paisAux, *paisAnterior, *ultimoPaisLocal;
@@ -132,7 +132,7 @@ void telaMenu() {
     gotoXY(42, 22);
 }
 
-void telaInserir() {
+int telaInserir() {
     system("cls");
     printf("──────────────────── ADICIONAR PAÍS ────────────────────");
     gotoXY(1, 2);
@@ -143,6 +143,11 @@ void telaInserir() {
     printf("*  Campo 3:                                                      *");
 
     printf("\n────────────────────────────────────────────────────────");
+
+    gotoXY(20, 2); scanf(" %63[^\n]", nome); limparBuffer();
+    gotoXY(20, 3); scanf(" %63[^\n]", descricao); limparBuffer();
+
+    return !buscarNoDicionario(nome);
 }
 
 void telaRemover() {
@@ -252,71 +257,27 @@ void exibir() {
 /********************* FUNCAO INSERIR *******************/
 
 void inserir() {
-    char buffer[63] = {};
+    char letraGrupo = toupper(nome[0]);
 
-    do {
-        telaInserir();
+    if (existeLetra(letraGrupo)) {
+        paisAux->proximo = calloc(1, sizeof(Pais)); if (!paisAux->proximo) return;
+        paisAux = paisAux->proximo;
 
-        gotoXY(20, 2);
-        scanf(" %63[^\n]", buffer); limparBuffer();
-        char *name = strdup(buffer); if (!name) return;
+        escrever(&paisAux->nome, nome);
+        escrever(&paisAux->descricao, descricao);
+        letraAux->total++;
 
-        char letraGrupo = toupper(name[0]);
+    } else {
+        letraAux->proximo = calloc(1, sizeof(Letra)); if (!letraAux->proximo) return;
+        letraAux->proximo->paises = calloc(1, sizeof(Pais)); if (!letraAux->proximo->paises) return;
 
-        if (!existeLetra(letraGrupo)) {
-            letraAux->proximo = calloc(1, sizeof(Letra));
-            if (!letraAux->proximo) { free(name); return; }
+        letraAux->proximo->anterior = letraAux;
 
-            letraAux->proximo->anterior = letraAux;
-            letraAux->proximo->l = letraGrupo;
-
-            letraAux = letraAux->proximo;
-        }
-
-        paisAux = letraAux->paises;
-
-        // Verifica se já existe o país
-        int duplicato = 0;
-        while (paisAux) {
-            if (stricmp(paisAux->nome, name) == 0) { // Compara com a entrada do usuário
-                duplicato = 1;
-                break; // Encontrou, então interrompe
-            }
-            ultimoPaisLocal = paisAux;
-            paisAux = paisAux->proximo; // Atualiza o auxiliar
-        }
-
-        if (duplicato) {
-            free(name);
-            gotoXY(1, 6);
-            printf("País já registrado");
-        } else {
-            Pais *novo = calloc(1, sizeof(Pais));
-            if (!novo) {
-                gotoXY(1, 6);
-                printf("Falha: país não alocado");
-                free(name);
-                return;
-            }
-            novo->nome = name;
-
-            gotoXY(20, 3);
-            scanf(" %63[^\n]", buffer); limparBuffer();
-            novo->descricao = strdup(buffer); if (!novo->descricao) return;
-
-            if (letraAux->paises) { // Se há países na lista
-                ultimoPaisLocal->proximo = novo; // vincula o "novo" ao "próximo do último"
-            } else {
-                ultimoPaisLocal = letraAux->paises = novo;
-            }
-            letraAux->total++;
-        }
-
-        gotoXY(1, 7); puts("\nContinuar inserindo dados? Sim[S] Nao[outra tecla]---->");
-        scanf(" %c", &resp); limparBuffer();
-        resp = toupper(resp);
-    } while (resp == 'S');
-    //salvar();
+        letraAux->proximo->l = letraGrupo;
+        letraAux->proximo->total++;
+        escrever(&letraAux->proximo->paises->nome, nome);
+        escrever(&letraAux->proximo->paises->descricao, descricao);
+    }
 }
 
 /********************* FUNCAO REMOVER *******************/
@@ -530,6 +491,7 @@ void gotoXY(int x, int y) {
 int main() {
     SetConsoleCP(CP_UTF8);
     SetConsoleOutputCP(CP_UTF8);
+    setlocale(LC_ALL, ".65001");
 
     int cont_tela = 1;
 
@@ -551,7 +513,9 @@ int main() {
                 exibir();
                 break;
             case 2:
-                inserir();
+                if (telaInserir() == 1) {
+                    inserir();
+                }
                 break;
             case 3:
                 remover();
