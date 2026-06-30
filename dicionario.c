@@ -10,6 +10,7 @@
 #include <locale.h>
 
 void gotoXY(int, int);
+void inserir(void);
 
 /****************** ESTRUTURAS ******************/
 
@@ -172,38 +173,28 @@ void telaEditar() {
     puts("********************************************************************");
 }
 
-/* void carregar() {
-    FILE *f = fopen("Alunos.txt", "r");
-    if (!f) { cout << "Erro ao carregar!"; return; }
+void carregar() {
+    FILE *f = fopen("dicionario.txt", "r");
+    if (!f) { puts("Erro ao carregar!"); return; }
 
-    inicio.pProximo = NULL;
-    pAux = &inicio;
-
-    while (true) {
-        Aluno *novo = new Aluno;
-
+    while (1) {
         int lidos = fscanf(
             f,
-            "%d|%49[^|]|%f|%f|%f\n",
-            &novo->matricula,
-            novo->nome,
-            &novo->notas[0],
-            &novo->notas[1],
-            &novo->notas[2]
+            "%63[^|]|%63[^\n]\n",
+            nome,
+            descricao
         );
 
-        if (lidos != 5) {
-            delete novo; break;
+        if (lidos != 2) {
+            break;
         }
 
-        novo->pProximo = NULL;
-        novo->pAnterior = pAux;
-        pAux->pProximo = novo;
-        pAux = novo;
+        buscarNoDicionario(nome);
+        inserir();
     }
 
     fclose(f);
-} */
+}
 
 /* void salvar() {
     FILE *f = fopen("Alunos.txt", "w");
@@ -451,7 +442,7 @@ int main() {
     int cont_tela = 1;
 
     listaLetra.proximo = NULL; /* lista vazia */
-    //carregar();
+    carregar();
     cont_tela++;
 
     do {
