@@ -164,13 +164,17 @@ int telaRemover() {
     return buscarNoDicionario(nome);
 }
 
-void telaEditar() {
+int telaEditar() {
     system("cls");
     puts("************************** EDITAR PAÍS ****************************");
     gotoXY(1, 2);
     puts("*  PAÍS:                                                           *");
     gotoXY(1, 3);
     puts("********************************************************************");
+
+    gotoXY(20, 2); scanf(" %63[^\n]", nome); limparBuffer();
+
+    return buscarNoDicionario(nome);
 }
 
 void carregar() {
@@ -278,8 +282,6 @@ void inserir() {
 /********************* FUNCAO REMOVER *******************/
 
 void remover() {
-    char letraGrupo = toupper(nome[0]);
-
     // Tratar os ponteiros
     if (paisAnterior == NULL) letraAux->paises = paisAux->proximo;
     else paisAnterior->proximo = paisAux->proximo;
@@ -300,80 +302,17 @@ void remover() {
 }
 
 void editar() {
-    char textoNome[64], textoNovoNome[62], textoNovaDescricao[64];
-    telaEditar();
+    Pais *paisTemp = paisAux;
 
-    gotoXY(15, 2);
-    lerTexto(textoNome);
+    lerTexto(nome);
+    lerTexto(descricao);
 
-    if (buscarNoDicionario(textoNome)) {
-        // O país existe para editar
-        lerTexto(textoNovoNome);
-
-        // Verifica a existência do nome
-        if (stricmp(textoNome, textoNovoNome) == 0) {
-            // O novo nome é o mesmo, só mude a descrição.
-            lerTexto(textoNovaDescricao);
-            escrever(&paisAux->descricao, textoNovaDescricao);
-
-        } else {
-            // O novo nome não é o mesmo
-            // Remove o nó antigo
-            if (paisAnterior) paisAnterior->proximo = paisAux->proximo;
-            else letraAux->paises = paisAux->proximo;
-
-            letraAux->total--;
-            freePais(&paisAux);
-
-            if (letraAux->total == 0) {
-                letraAux->anterior->proximo = letraAux->proximo;
-                if (letraAux->proximo) letraAux->proximo->anterior = letraAux->anterior;
-                free(letraAux);
-                letraAux = NULL;
-            }
-
-            // Atualiza os auxiliares
-            buscarNoDicionario(textoNovoNome);
-
-            // Verifica a existência da letra do novo nome
-            if (existeLetra(toupper(textoNovoNome[0]))) {
-                // A letra do novo nome existe
-                // Cria um nó de pais
-                paisAux->proximo = calloc(1, sizeof(Pais));
-                if (!paisAux->proximo) return;
-
-                escrever(&paisAux->proximo->nome, textoNovoNome);
-                lerTexto(textoNovaDescricao);
-                escrever(&paisAux->proximo->descricao, textoNovaDescricao);
-                letraAux->total++;
-
-            } else {
-                // A letra do novo nome não existe
-                // Cria-se um novo nó de letra
-
-                // Nova alocação, letraAux já é o último
-                letraAux->proximo = calloc(1, sizeof(Letra));
-                if (!letraAux->proximo) return;
-
-                // Rearranjando os ponteiros
-                letraAux->proximo->anterior = letraAux;
-
-                // Preenchendo a letra do nó
-                letraAux->proximo->l = toupper(textoNovoNome[0]);
-
-                // Cria-se um novo nó de país
-                letraAux->proximo->paises = calloc(1, sizeof(Pais));
-                paisAux = letraAux->proximo->paises;
-
-                // Inserindo os dados no nó
-                escrever(&paisAux->nome, textoNovoNome);
-                lerTexto(textoNovaDescricao);
-                escrever(&paisAux->descricao, textoNovaDescricao);
-                letraAux->proximo->total++;
-            }
-        }
+    if (buscarNoDicionario(nome)) {
+        escrever(&paisAux->descricao, descricao);
     } else {
-        gotoXY(15, 5); puts("NÃO HÁ PAISES REGISTRADO"); system("pause");
+        inserir();
+        buscarNoDicionario(paisTemp->nome);
+        remover();
     }
 }
 
@@ -469,7 +408,9 @@ int main() {
                 }
                 break;
             case 4:
-                editar();
+                if (telaEditar() == 1) {
+                    editar();
+                }
                 break;
             case 9:
                 //inserirOrdem();
