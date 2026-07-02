@@ -100,6 +100,35 @@ int buscarNoDicionario(const char *busca) {
     }
 }
 
+void bubbleSort() {
+    int swap;
+
+    while (1) {
+        swap = 0;
+        letraAux = listaLetra.proximo;
+        while (letraAux->proximo) {
+            if (letraAux->l > letraAux->proximo->l) {
+
+                if (letraAux->proximo->proximo) { letraAux->proximo->proximo->anterior = letraAux; }
+                letraAux->proximo->anterior = letraAux->anterior;
+
+                letraAux->anterior->proximo = letraAux->proximo;
+                letraAux->anterior = letraAux->proximo;
+
+                letraAux->proximo = letraAux->proximo->proximo;
+                letraAux->anterior->proximo = letraAux;
+
+                swap = 1;
+            } else {
+                letraAux = letraAux->proximo;
+            }
+        }
+        if (swap == 0) {
+            break;
+        }
+    }
+}
+
 /****************** FUNCAO CABECALHO ******************/
 
 void telaCabecalho() {
@@ -110,7 +139,21 @@ void telaCabecalho() {
     printf("USANDO UMA LISTA SIMPLES E DUPLAMENTE ENCADEADA\n");
 }
 
-/****************** FUNCAO MENU ******************/
+/****************** TELAS ******************/
+int telaExibir() {
+    if (listaLetra.proximo) {
+        system("cls"); gotoXY(1, 1);
+        printf("────────────────────────  EXIBIR ────────────────────────"); gotoXY(1, 2);
+        printf("[B] ORDENAR: CRESCENTE\n"); printf("LETRA - TOTAIS/PAÍSES");
+        printf("\n─────────────────────────────────────────────────────────\n");
+        return 1;
+    } else {
+        gotoXY(15, 18);
+        puts("NÃO HÁ PAISES REGISTRADO");
+        system("pause");
+        return 0;
+    }
+}
 
 void telaMenu() {
     col = 10;
@@ -125,12 +168,12 @@ void telaMenu() {
     gotoXY(col, 14);
     puts("*      Editar.............[4]       *");
     gotoXY(col, 15);
-    //cout << "*      Sair...............[0]       *";
+    puts("*      Sair...............[0]       *");
     gotoXY(col, 16);
-    //cout << "*      Digite a opcao:              *";
+    printf("*      Digite a opção:              *");
     gotoXY(col, 17);
-    //cout << "*************************************";
-    gotoXY(42, 22);
+    puts("─────────────────────────────────────");
+    gotoXY(37, 16);
 }
 
 int telaInserir() {
@@ -224,16 +267,9 @@ void carregar() {
 /********************* FUNCAO EXIBIR *******************/
 
 void exibir() {
-
     if (listaLetra.proximo != NULL) {
-        letraAux = listaLetra.proximo; // aponta para o inicio da lista
-        system("cls");
-        gotoXY(1, 1);
-        printf("────────────────────  EXIBIR ────────────────────");
-        gotoXY(1, 2); printf("PAÍS");
-        printf("\n────────────────────────────────────────────────────────────\n");
+        letraAux = listaLetra.proximo;
 
-        linha = 5;
         while (letraAux) {
             printf("[%c] - (%d)\n", letraAux->l, letraAux->total);
             paisAux = letraAux->paises;
@@ -241,15 +277,17 @@ void exibir() {
                 printf("    %s\n", paisAux->nome);
                 paisAux = paisAux->proximo;
             }
-            letraAux = letraAux->proximo;
-            puts("");
+            letraAux = letraAux->proximo; puts("");
         }
+
         printf("\n────────────────────────────────────────────────────────────\n");
-        puts(""); system("pause");
-    } else {
-        gotoXY(15, 18);
-        puts("NÃO HÁ PAISES REGISTRADO");
-        system("pause");
+        puts(""); puts("Pressione B para ordenar ou qualquer outra tecla para sair");
+        scanf(" %c", &nome); getchar();
+        if (nome[0] == 'B' || nome[0] == 'b') {
+            bubbleSort();
+            telaExibir();
+            exibir();
+        }
     }
 }
 
@@ -393,9 +431,12 @@ int main() {
         getchar();
         switch (opcao) {
             case 0:
+                exit(1);
                 break;
             case 1:
-                exibir();
+                if (telaExibir() == 1) {
+                    exibir();
+                }
                 break;
             case 2:
                 if (telaInserir() == 1) {
@@ -412,7 +453,7 @@ int main() {
                     editar();
                 }
                 break;
-            case 9:
+            case 9:                
                 //inserirOrdem();
                 break;
             default:
