@@ -100,14 +100,42 @@ int buscarNoDicionario(const char *busca) {
     }
 }
 
-void bubbleSort() {
+typedef int (*Ordem)(void);
+int crescente(void) {
+    return letraAux->l > letraAux->proximo->l;
+}
+
+int descrecente(void) {
+    return letraAux->l < letraAux->proximo->l;
+}
+
+void bubbleSort(Ordem ordem) {
     int swap;
+
+    Letra *letraFutura, *letraPassada, *letra1, *letra2;
 
     while (1) {
         swap = 0;
         letraAux = listaLetra.proximo;
+
         while (letraAux->proximo) {
-            if (letraAux->l > letraAux->proximo->l) {
+            letraPassada = letraAux->anterior;
+            letra1 = letraAux;
+            letra2 = letraAux->proximo;
+            letraFutura = letraAux->proximo->proximo;
+
+            if (ordem()) {
+                if (letraFutura) letraFutura->anterior = letra1;
+                letra1->anterior = letra2;
+                letra2->anterior = letraPassada;
+
+                letraPassada->proximo = letra2;
+                letra2->proximo = letra1;
+                letra1->proximo = letraFutura;
+
+                swap = 1;
+            }
+            /* if (letraAux->l > letraAux->proximo->l) {
 
                 if (letraAux->proximo->proximo) { letraAux->proximo->proximo->anterior = letraAux; }
                 letraAux->proximo->anterior = letraAux->anterior;
@@ -119,7 +147,8 @@ void bubbleSort() {
                 letraAux->anterior->proximo = letraAux;
 
                 swap = 1;
-            } else {
+            } */
+            else {
                 letraAux = letraAux->proximo;
             }
         }
@@ -127,6 +156,12 @@ void bubbleSort() {
             break;
         }
     }
+}
+
+void Ordenar(void (*bbSort)(Ordem), Ordem ordem) {
+    bbSort(ordem);
+    puts("Entrou na função-ordenar()");
+    puts("TRECHOS COMUM DE VÁRIOS TIPO DE CÓDIGO");
 }
 
 /****************** FUNCAO CABECALHO ******************/
@@ -281,12 +316,24 @@ void exibir() {
         }
 
         printf("\n────────────────────────────────────────────────────────────\n");
-        puts(""); puts("Pressione B para ordenar ou qualquer outra tecla para sair");
-        scanf(" %c", &nome); getchar();
-        if (nome[0] == 'B' || nome[0] == 'b') {
-            bubbleSort();
-            telaExibir();
-            exibir();
+        puts(""); puts("Pressione C (crescente) ou D (descrescente) para ordenar ou qualquer outra tecla para sair");
+        scanf(" %c", &resp); getchar();
+        switch (resp) {
+            case 'C':
+            case 'c':
+                bubbleSort(crescente);
+                goto refresh;
+            case 'D':
+            case 'd':
+                bubbleSort(descrecente);
+                goto refresh;
+            refresh:
+                telaExibir();
+                exibir();
+                break;
+            default:
+                Ordenar(bubbleSort, crescente);
+                break;
         }
     }
 }
@@ -453,7 +500,7 @@ int main() {
                     editar();
                 }
                 break;
-            case 9:                
+            case 9:
                 //inserirOrdem();
                 break;
             default:
