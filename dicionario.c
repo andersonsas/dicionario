@@ -109,6 +109,34 @@ int descrecente(void) {
     return letraAux->l < letraAux->proximo->l;
 }
 
+void insertionSort(Ordem ordem) {
+    letraAux = listaLetra.proximo;
+    Letra *eleito = letraAux->proximo, *pin;
+
+    while (eleito) {
+        pin = eleito->proximo;
+        while (1) {
+            if (eleito->anterior->l > eleito->l) {
+                letraAux = eleito->anterior;
+
+                /*───────────────────────────────────── SWAP ─────────────────────────────────────*/
+                if (letraAux->proximo->proximo) { letraAux->proximo->proximo->anterior = letraAux; }
+                letraAux->proximo->anterior = letraAux->anterior;
+
+                letraAux->anterior->proximo = letraAux->proximo;
+                letraAux->anterior = letraAux->proximo;
+
+                letraAux->proximo = letraAux->proximo->proximo;
+                letraAux->anterior->proximo = letraAux;
+                /*─────────────────────────────────────────────────────────────────────────────────*/
+            } else {
+                eleito = pin;
+                break;
+            }
+        }
+    }
+}
+
 void bubbleSort(Ordem ordem) {
     int swap;
 
@@ -321,7 +349,7 @@ void exibir() {
         switch (resp) {
             case 'C':
             case 'c':
-                bubbleSort(crescente);
+                insertionSort(crescente);
                 goto refresh;
             case 'D':
             case 'd':
@@ -332,7 +360,7 @@ void exibir() {
                 exibir();
                 break;
             default:
-                Ordenar(bubbleSort, crescente);
+                //Ordenar(bubbleSort, crescente);
                 break;
         }
     }
