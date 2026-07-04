@@ -100,88 +100,68 @@ int buscarNoDicionario(const char *busca) {
     }
 }
 
-typedef int (*Ordem)(void);
-int crescente(void) {
-    return letraAux->l > letraAux->proximo->l;
+typedef int (*Ordem)(Letra *);
+int crescente(Letra *_eleito) {
+    return letraAux->l > _eleito->l;
 }
 
-int descrecente(void) {
-    return letraAux->l < letraAux->proximo->l;
+int decrescente(Letra *_eleito) {
+    if (letraAux == &listaLetra) return 0;
+    return letraAux->l < _eleito->l;
+}
+
+void swap(Letra *eleito) {
+    if (eleito->proximo) eleito->proximo->anterior = eleito->anterior;
+    eleito->anterior->proximo = eleito->proximo;
+
+    letraAux->anterior->proximo = eleito;
+    eleito->anterior = letraAux->anterior;
+
+    eleito->proximo = letraAux;
+    letraAux->anterior = eleito;
 }
 
 void insertionSort(Ordem ordem) {
+    int trocar = 0;
     letraAux = listaLetra.proximo;
     Letra *eleito = letraAux->proximo, *pin;
 
     while (eleito) {
         pin = eleito->proximo;
-        while (1) {
-            if (eleito->anterior->l > eleito->l) {
-                letraAux = eleito->anterior;
+        letraAux = eleito->anterior;
 
-                /*───────────────────────────────────── SWAP ─────────────────────────────────────*/
-                if (letraAux->proximo->proximo) { letraAux->proximo->proximo->anterior = letraAux; }
-                letraAux->proximo->anterior = letraAux->anterior;
-
-                letraAux->anterior->proximo = letraAux->proximo;
-                letraAux->anterior = letraAux->proximo;
-
-                letraAux->proximo = letraAux->proximo->proximo;
-                letraAux->anterior->proximo = letraAux;
-                /*─────────────────────────────────────────────────────────────────────────────────*/
-            } else {
-                eleito = pin;
-                break;
-            }
+        while (ordem(eleito)) {
+            letraAux = letraAux->anterior;
+            trocar = 1;
+            continue;
         }
+
+        if (trocar == 1) {
+            letraAux = letraAux->proximo;
+            swap(eleito);
+
+            trocar = 0;
+        }
+
+        eleito = pin;
     }
 }
 
 void bubbleSort(Ordem ordem) {
-    int swap;
+    int troca = 1;
 
-    Letra *letraFutura, *letraPassada, *letra1, *letra2;
-
-    while (1) {
-        swap = 0;
+    while (troca) {
+        troca = 0;
         letraAux = listaLetra.proximo;
 
         while (letraAux->proximo) {
-            letraPassada = letraAux->anterior;
-            letra1 = letraAux;
-            letra2 = letraAux->proximo;
-            letraFutura = letraAux->proximo->proximo;
 
-            if (ordem()) {
-                if (letraFutura) letraFutura->anterior = letra1;
-                letra1->anterior = letra2;
-                letra2->anterior = letraPassada;
-
-                letraPassada->proximo = letra2;
-                letra2->proximo = letra1;
-                letra1->proximo = letraFutura;
-
-                swap = 1;
-            }
-            /* if (letraAux->l > letraAux->proximo->l) {
-
-                if (letraAux->proximo->proximo) { letraAux->proximo->proximo->anterior = letraAux; }
-                letraAux->proximo->anterior = letraAux->anterior;
-
-                letraAux->anterior->proximo = letraAux->proximo;
-                letraAux->anterior = letraAux->proximo;
-
-                letraAux->proximo = letraAux->proximo->proximo;
-                letraAux->anterior->proximo = letraAux;
-
-                swap = 1;
-            } */
-            else {
+            if (ordem(letraAux->proximo)) {
+                swap(letraAux->proximo);
+                troca = 1;
+            } else {
                 letraAux = letraAux->proximo;
             }
-        }
-        if (swap == 0) {
-            break;
         }
     }
 }
@@ -207,7 +187,10 @@ int telaExibir() {
     if (listaLetra.proximo) {
         system("cls"); gotoXY(1, 1);
         printf("────────────────────────  EXIBIR ────────────────────────"); gotoXY(1, 2);
-        printf("[B] ORDENAR: CRESCENTE\n"); printf("LETRA - TOTAIS/PAÍSES");
+        printf("[b/B] ORDENAR: BUBBLESORT CRESCENTE/DECRESCENTE\n");
+        printf("[i/I] ORDENAR: INSERTIONSORT CRESCENTE/DECRESCENTE\n");
+
+        printf("LETRA - TOTAIS/PAÍSES");
         printf("\n─────────────────────────────────────────────────────────\n");
         return 1;
     } else {
@@ -344,16 +327,20 @@ void exibir() {
         }
 
         printf("\n────────────────────────────────────────────────────────────\n");
-        puts(""); puts("Pressione C (crescente) ou D (descrescente) para ordenar ou qualquer outra tecla para sair");
+        puts(""); puts("Escolha uma ordenação ou outra teclas para sair");
         scanf(" %c", &resp); getchar();
         switch (resp) {
-            case 'C':
-            case 'c':
+            case 'i':
                 insertionSort(crescente);
                 goto refresh;
-            case 'D':
-            case 'd':
-                bubbleSort(descrecente);
+            case 'I':
+                insertionSort(decrescente);
+                goto refresh;
+            case 'b':
+                bubbleSort(crescente);
+                goto refresh;
+            case 'B':
+                bubbleSort(decrescente);
                 goto refresh;
             refresh:
                 telaExibir();
@@ -428,53 +415,6 @@ void editar() {
         remover();
     }
 }
-
-/********************* FUNCAO INSERIR EM ORDEM *******************/
-
-/*
-void inserirOrdem() {
-    Aluno *pMenor, *pMaior;
-
-    do {
-        desenhar_cadastrar_aluno();
-        pMaior = &inicio; // aponta para o inicio da lista
-        pMenor = pMaior;
-        pAux = new Aluno;
-
-        gotoXY(20, 2); cin >> pAux->matricula; getchar();
-        gotoXY(20, 3); fgets(pAux->nome, 99, stdin);
-        gotoXY(20, 4); cin >> pAux->notas[0];
-        gotoXY(20, 5); cin >> pAux->notas[1];
-        pAux->notas[2] = (pAux->notas[0] + pAux->notas[1]) / 2;
-        pAux->pProximo = NULL;
-
-        if (pMaior->pProximo == NULL) {
-            pMaior->pProximo = pAux;
-            pAux->pProximo = NULL;
-        } else {
-            pMaior = pMaior->pProximo;
-            while (pAux->matricula > pMaior->matricula && pMaior->pProximo != NULL) {
-                pMenor = pMaior;
-                pMaior = pMaior->pProximo;
-            }
-
-            if (pAux->matricula > pMaior->matricula && pMaior->pProximo == NULL) {
-                pMaior->pProximo = pAux;
-                pAux->pAnterior = pMaior;
-                pAux->pProximo = NULL;
-            } else {
-                pMenor->pProximo = pAux;
-                pAux->pProximo = pMaior;
-                pAux->pAnterior = pMenor;
-                pMaior->pAnterior = pAux;
-            }
-        }
-        cout << "\nContinuar inserindo dados? Sim[S] Nao[outra tecla]---->";
-        cin >> resp;
-        resp = toupper(resp);
-    } while (resp == 'S');
-    salvar();
-} */
 
 void gotoXY(int x, int y) {
     printf("\033[%d;%dH", y, x);
