@@ -7,7 +7,6 @@
 #include <stdlib.h>
 #include <windows.h>
 #include <string.h>
-#include <locale.h>
 
 /****************** ESTRUTURAS ******************/
 
@@ -24,22 +23,18 @@ typedef struct letra {
     struct letra *anterior, *proximo;
 } Letra;
 
-void gotoXY(int, int);
 void salvar();
 
 /****************** VARIAVEIS ******************/
-int opcao, linha, col;
-char resp, nome[64] = {}, descricao[64] = {};
 
-//COORD CursorPosition;
-Pais *paisAux;
+char nome[64] = {}, descricao[64] = {};
 Letra *letraAux, preLetraLista = {};
+Pais *paisAux;
 
 /************ FUNÇÕES AUXILIARES ****************/
 
-void lerTexto(char *txt) {
-    fgets(txt, 64, stdin);
-    txt[strcspn(txt, "\n")] = '\0';
+void gotoXY(int x, int y) {
+    printf("\033[%d;%dH", y, x);
 }
 
 void limparBuffer() {
@@ -47,11 +42,9 @@ void limparBuffer() {
     while ((c = getchar()) != '\n' && c != EOF);
 }
 
-void freePais(Pais **noPais) {
-    free((*noPais)->nome);
-    free((*noPais)->descricao);
-    free(*noPais);
-    *noPais = NULL;
+void lerTexto(char *txt) {
+    fgets(txt, 64, stdin);
+    txt[strcspn(txt, "\n")] = '\0';
 }
 
 void escrever(char **destino, char *fonte) {
@@ -60,14 +53,42 @@ void escrever(char **destino, char *fonte) {
     if (!(*destino)) return;
 }
 
-Letra *existeLetra(const char busca) {
-    Letra *aux = preLetraLista.proximo;
-
-    while (aux && aux->l != toupper(busca)) aux = aux->proximo;
-    return aux ? aux : NULL;
+void freePais(Pais **pais) {
+    free((*pais)->nome);
+    free((*pais)->descricao);
+    free(*pais);
+    *pais = NULL;
 }
 
-Pais *existePais(const char *nome) {
+void liberarDicionario(Letra *cabeca) {
+    if (!cabeca) return;
+
+    Letra *atualL = cabeca->proximo;
+
+    while (atualL) {
+        Pais *atualP = atualL->paises;
+        while (atualP) {
+            Pais *proxP = atualP->proximo;
+            freePais(&atualP);
+            atualP = proxP;
+        }
+
+        Letra *proxL = atualL->proximo;
+        free(atualL);
+        atualL = proxL;
+    }
+
+    cabeca->proximo = NULL;
+}
+
+Letra *existeLetra(const char busca) {
+    Letra *auxL = preLetraLista.proximo;
+
+    while (auxL && auxL->l != toupper(busca)) auxL = auxL->proximo;
+    return auxL ? auxL : NULL;
+}
+
+Pais *buscarNoDicionario(const char *nome) {
     Letra *auxL = existeLetra(nome[0]);
     if (!auxL) return NULL;
 
@@ -82,58 +103,47 @@ Pais *existePais(const char *nome) {
     return NULL;
 }
 
-Pais *buscarNoDicionario(const char *busca) {
-    return existePais(busca);
+/************************** ORDENAÇÃO *******************************/
 
-    /* if (existeLetra(toupper(busca[0]))) {
-        return existePais(busca);
-    } else {
-        existePais(busca);
-        return NULL;
-    } */
+typedef int (*Ordem)(Letra *A, Letra *B);
+int crescente(Letra *_aux, Letra *_eleito) {
+    return _aux->l > _eleito->l;
 }
 
-typedef int (*Ordem)(Letra *);
-int crescente(Letra *_eleito) {
-    return letraAux->l > _eleito->l;
+int decrescente(Letra *_aux, Letra *_eleito) {
+    if (_aux == &preLetraLista) return 0;
+    return _aux->l < _eleito->l;
 }
 
-int decrescente(Letra *_eleito) {
-    if (letraAux == &preLetraLista) return 0;
-    return letraAux->l < _eleito->l;
-}
-
-void swap(Letra *eleito) {
+void swap(Letra *auxL, Letra *eleito) {
     if (eleito->proximo) eleito->proximo->anterior = eleito->anterior;
     eleito->anterior->proximo = eleito->proximo;
 
-    letraAux->anterior->proximo = eleito;
-    eleito->anterior = letraAux->anterior;
+    auxL->anterior->proximo = eleito;
+    eleito->anterior = auxL->anterior;
 
-    eleito->proximo = letraAux;
-    letraAux->anterior = eleito;
+    eleito->proximo = auxL;
+    auxL->anterior = eleito;
 }
 
 void insertionSort(Ordem ordem) {
     int trocar = 0;
-    letraAux = preLetraLista.proximo;
-    Letra *eleito = letraAux->proximo, *pin;
+    Letra *auxL = preLetraLista.proximo;
+    Letra *eleito = auxL->proximo, *pin;
 
     while (eleito) {
         pin = eleito->proximo;
-        letraAux = eleito->anterior;
+        auxL = eleito->anterior;
 
-        while (ordem(eleito)) {
-            letraAux = letraAux->anterior;
+        while (ordem(auxL, eleito)) {
+            auxL = auxL->anterior;
             trocar = 1;
             continue;
         }
 
         if (trocar == 1) {
-            letraAux = letraAux->proximo;
-            swap(eleito);
-
-            trocar = 0;
+            auxL = auxL->proximo;
+            swap(auxL, eleito);
         }
 
         eleito = pin;
@@ -145,24 +155,22 @@ void bubbleSort(Ordem ordem) {
 
     while (troca) {
         troca = 0;
-        letraAux = preLetraLista.proximo;
+        Letra *auxL = preLetraLista.proximo;
 
-        while (letraAux->proximo) {
+        while (auxL->proximo) {
 
-            if (ordem(letraAux->proximo)) {
-                swap(letraAux->proximo);
+            if (ordem(auxL, auxL->proximo)) {
+                swap(auxL, auxL->proximo);
                 troca = 1;
             } else {
-                letraAux = letraAux->proximo;
+                auxL = auxL->proximo;
             }
         }
     }
 }
 
-void Ordenar(void (*bbSort)(Ordem), Ordem ordem) {
-    bbSort(ordem);
-    puts("Entrou na função-ordenar()");
-    puts("TRECHOS COMUM DE VÁRIOS TIPO DE CÓDIGO");
+void ordenar(void (*sortType)(Ordem), Ordem ordem) {
+    sortType(ordem);
 }
 
 /****************** FUNCAO CABECALHO ******************/
@@ -176,6 +184,7 @@ void telaCabecalho() {
 }
 
 /****************** TELAS ******************/
+
 int telaExibir() {
     if (preLetraLista.proximo) {
         system("cls"); gotoXY(1, 1);
@@ -195,7 +204,7 @@ int telaExibir() {
 }
 
 void telaMenu() {
-    col = 10;
+    int col = 10;
     gotoXY(col, 10);
     puts("──────────────── MENU ────────────────");
     gotoXY(col, 11);
@@ -219,16 +228,13 @@ Pais *telaInserir() {
     system("cls");
     printf("──────────────────── ADICIONAR PAÍS ────────────────────");
     gotoXY(1, 2);
-    printf("*  Nome do País:                                                 *");
+    printf("*  NOME DO PAÍS:                                                 *");
     gotoXY(1, 3);
-    printf("*  Campo 1:                                                      *");
-    gotoXY(1, 4);
-    printf("*  Campo 3:                                                      *");
-
+    printf("*  DESCRIÇÃO:                                                      *");
     printf("\n────────────────────────────────────────────────────────");
 
-    gotoXY(20, 2); scanf(" %63[^\n]", nome); limparBuffer();
-    gotoXY(20, 3); scanf(" %63[^\n]", descricao); limparBuffer();
+    gotoXY(20, 2); lerTexto(nome);
+    gotoXY(20, 3); lerTexto(descricao);
 
     return buscarNoDicionario(nome);
 }
@@ -241,7 +247,7 @@ Pais *telaRemover() {
     gotoXY(1, 3);
     puts("********************************************************************");
 
-    gotoXY(20, 2); scanf(" %63[^\n]", nome); limparBuffer();
+    gotoXY(20, 2); lerTexto(nome);
 
     return buscarNoDicionario(nome);
 }
@@ -257,7 +263,7 @@ Pais *telaEditar() {
     puts("*  DESCRIÇÃO:                                                      *");
     puts("********************************************************************");
 
-    gotoXY(20, 2); scanf(" %63[^\n]", nome); limparBuffer();
+    gotoXY(20, 2); lerTexto(nome);
     gotoXY(20, 3);
 
     return buscarNoDicionario(nome);
@@ -266,6 +272,7 @@ Pais *telaEditar() {
 /********************* FUNCAO EXIBIR *******************/
 
 void exibir() {
+    char resp;
     if (preLetraLista.proximo != NULL) {
         letraAux = preLetraLista.proximo;
 
@@ -283,24 +290,23 @@ void exibir() {
         puts(""); puts("Escolha uma ordenação ou outra teclas para sair");
         scanf(" %c", &resp); getchar();
         switch (resp) {
-            case 'i':
-                insertionSort(crescente);
-                goto refresh;
-            case 'I':
-                insertionSort(decrescente);
-                goto refresh;
             case 'b':
-                bubbleSort(crescente);
+                ordenar(bubbleSort, crescente);
                 goto refresh;
             case 'B':
-                bubbleSort(decrescente);
+                ordenar(bubbleSort, decrescente);
+                goto refresh;
+            case 'i':
+                ordenar(insertionSort, crescente);
+                goto refresh;
+            case 'I':
+                ordenar(insertionSort, decrescente);
                 goto refresh;
             refresh:
                 telaExibir();
                 exibir();
                 break;
             default:
-                //Ordenar(bubbleSort, crescente);
                 break;
         }
     }
@@ -366,6 +372,8 @@ void remover(Letra *letra, Pais *pais) {
         free(letra);
         letra = NULL;
     }
+
+    salvar();
 }
 
 void editar(Pais *paisTemp) {
@@ -431,41 +439,15 @@ void salvar() {
     fclose(f);
 }
 
-void liberarDicionario(Letra *cabeca) {
-    if (!cabeca) return;
-
-    Letra *atualL = cabeca->proximo;
-
-    while (atualL) {
-        Pais *atualP = atualL->paises;
-        while (atualP) {
-            Pais *proxP = atualP->proximo;
-            freePais(&atualP);
-            atualP = proxP;
-        }
-
-        Letra *proxL = atualL->proximo;
-        free(atualL);
-        atualL = proxL;
-    }
-
-    cabeca->proximo = NULL;
-}
-
-void gotoXY(int x, int y) {
-    printf("\033[%d;%dH", y, x);
-}
-
 /****************** FUNCAO PRINCIPAL ******************/
 
 int main() {
     SetConsoleCP(CP_UTF8);
     SetConsoleOutputCP(CP_UTF8);
-    setlocale(LC_ALL, ".65001");
 
-    int cont_tela = 1;
+    int opcao, cont_tela = 1;
 
-    preLetraLista.proximo = NULL; /* lista vazia */
+    preLetraLista.proximo = NULL;
     carregar();
     cont_tela++;
 
@@ -503,12 +485,9 @@ int main() {
                     editar(selecionado);
                 }
                 break;
-            case 9:
-                //inserirOrdem();
-                break;
             default:
                 gotoXY(15, 18);
-                //cout << "ATENCAO: Opcao Invalida! ";
+                printf("Opção Inválida");
                 system("pause");
         }
 
