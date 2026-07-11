@@ -23,13 +23,10 @@ typedef struct letra {
     struct letra *anterior, *proximo;
 } Letra;
 
-void salvar();
-
 /****************** VARIAVEIS ******************/
 
 char nome[64] = {}, descricao[64] = {};
-Letra *letraAux, preLetraLista = {};
-Pais *paisAux;
+Letra preLetraLista = {};
 
 /************ FUNÇÕES AUXILIARES ****************/
 
@@ -272,18 +269,21 @@ Pais *telaEditar() {
 /********************* FUNCAO EXIBIR *******************/
 
 void exibir() {
+    Letra *auxL = preLetraLista.proximo;
+    Pais *auxP;
+
     char resp;
     if (preLetraLista.proximo != NULL) {
-        letraAux = preLetraLista.proximo;
 
-        while (letraAux) {
-            printf("[%c] - (%d)\n", letraAux->l, letraAux->total);
-            paisAux = letraAux->paises;
-            while (paisAux) {
-                printf("    %s\n", paisAux->nome);
-                paisAux = paisAux->proximo;
+        while (auxL) {
+            printf("[%c] - (%d)\n", auxL->l, auxL->total);
+            auxP = auxL->paises;
+
+            while (auxP) {
+                printf("    %s\n", auxP->nome);
+                auxP = auxP->proximo;
             }
-            letraAux = letraAux->proximo; puts("");
+            auxL = auxL->proximo; puts("");
         }
 
         printf("\n────────────────────────────────────────────────────────────\n");
@@ -343,20 +343,20 @@ void inserir(char *novoPais, char *novaDescricao) {
         escrever(&letter->proximo->paises->descricao, novaDescricao);
 
     }
-
-    salvar();
 }
 
 /********************* FUNCAO REMOVER *******************/
 
 void remover(Letra *letra, Pais *pais) {
+    Pais *auxP;
+
     // Tratar os ponteiros
     if (pais == letra->paises) letra->paises = pais->proximo;
     else {
-        paisAux = letra->paises;
-        while (paisAux->proximo != pais) paisAux = paisAux->proximo;
+        Pais *auxP = letra->paises;
+        while (auxP->proximo != pais) auxP = auxP->proximo;
 
-        paisAux->proximo = pais->proximo;
+        auxP->proximo = pais->proximo;
     }
 
     // Libera memória
@@ -372,18 +372,16 @@ void remover(Letra *letra, Pais *pais) {
         free(letra);
         letra = NULL;
     }
-
-    salvar();
 }
 
 void editar(Pais *paisTemp) {
     lerTexto(nome); gotoXY(20, 4);
     lerTexto(descricao);
 
-    paisAux = buscarNoDicionario(nome);
+    Pais *auxP = buscarNoDicionario(nome);
 
-    if (paisAux) {
-        escrever(&paisAux->descricao, descricao);
+    if (auxP) {
+        escrever(&auxP->descricao, descricao);
     } else {
         inserir(nome, descricao);
         remover(existeLetra(paisTemp->nome[0]), paisTemp);
@@ -415,28 +413,44 @@ void carregar() {
 }
 
 void salvar() {
+    Letra *auxL = preLetraLista.proximo;
+    Pais *auxP;
+
     FILE *f = fopen("dicionario.txt", "w");
     if (!f) { printf("Erro ao salvar"); return; }
 
-    letraAux = &preLetraLista;
-    letraAux = letraAux->proximo;
+    while (auxL) {
+        auxP = auxL->paises;
 
-    while (letraAux) {
-        paisAux = letraAux->paises;
-
-        while (paisAux && fprintf(
+        while (auxP && fprintf(
             f,
             "%s|%s\n",
-            paisAux->nome,
-            paisAux->descricao) != EOF
+            auxP->nome,
+            auxP->descricao) != EOF
         ) {
-            paisAux = paisAux->proximo;
+            auxP = auxP->proximo;
         }
 
-        letraAux = letraAux->proximo;
+        auxL = auxL->proximo;
     }
 
     fclose(f);
+}
+
+typedef void (*CallbackMensagem)(char *);
+
+void disparar_aviso_no_rodape(char *msg) {
+    gotoXY(1, 20); printf("[Notificacao]: %s \033[33m[%s]\033[0m\n", msg, nome);
+}
+
+void gerenciar_edicao(CallbackMensagem on_erro) {
+    int dado_existe = 0;
+
+    if (!dado_existe) {
+        on_erro(descricao);
+    }
+
+    on_erro = NULL;
 }
 
 /****************** FUNCAO PRINCIPAL ******************/
@@ -450,16 +464,20 @@ int main() {
     preLetraLista.proximo = NULL;
     carregar();
     cont_tela++;
+    CallbackMensagem delegate = NULL;
 
     do {
         if (cont_tela > 1) {
             telaCabecalho();
+            if (delegate) gerenciar_edicao(disparar_aviso_no_rodape);
+            delegate = NULL;
             telaMenu();
         }
         scanf("%d", &opcao);
         getchar();
         switch (opcao) {
             case 0:
+                salvar();
                 liberarDicionario(&preLetraLista);
                 exit(0);
                 break;
@@ -477,12 +495,22 @@ int main() {
                 Pais * temp = telaRemover();
                 if (temp) {
                     remover(existeLetra(nome[0]), temp);
+                    strcpy(descricao, "🟢 Removido com sucesso");
+                    delegate = disparar_aviso_no_rodape;
+                } else {
+                    strcpy(descricao, "🔴 Não há registro de");
+                    delegate = disparar_aviso_no_rodape;
                 }
                 break;
             case 4:
                 Pais * selecionado = telaEditar();
                 if (selecionado) {
                     editar(selecionado);
+                    strcpy(descricao, "🟢 Editado com sucesso");
+                    delegate = disparar_aviso_no_rodape;
+                } else {
+                    strcpy(descricao, "🔴 Inválido");
+                    delegate = disparar_aviso_no_rodape;
                 }
                 break;
             default:
